@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 运行时数据（数据库 / 上传 / 产物 / 日志）
+backend/data/
+backend/trajectories/
+*.db
+*.sqlite3
+*.log
+*.pid
+*.out
+
+# 供应商配置（含个人通道信息，仓库只保留 providers.example.yaml）
+backend/providers.yaml
+backend/providers.yaml.bak-*
+backend/_tmp_migrate.yaml
+
+# 前端
+node_modules/
+frontend/dist/
+frontend/dist_*/
+
+# 打包产物
+build/_stage_providers/
+build/_wheels/
+build/_work/
+dist_portable*/
+dist_r*/
+dist/
+
+# 临时 / 调试产物
+_*/
+_tmp/
+*.tmp
+
+# IDE / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# MCP 运行时
+.trae_runs/

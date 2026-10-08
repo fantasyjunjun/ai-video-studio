@@ -1,0 +1,16 @@
+# 后端依赖（P0/P1/P2 阶段）
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.6
+PyYAML>=6.0
+SQLAlchemy>=2.0
+alembic>=1.13          # 迁移（含建立 asset 的 FTS5 虚表）
+python-multipart>=0.0.9 # 文件上传（参考片 / 商品图 / 主播图）
+httpx>=0.27            # MCP 客户端 + 贴链接导入的 SSRF 安全取数
+
+# 本地工具链（复用现有技能脚本所需）
+numpy>=1.26
+scipy>=1.12
+edge-tts>=6.1
+
+# 外部：ffmpeg / ffprobe 需在本机 PATH 中（抽帧、装配、onset 探测、混音都依赖）

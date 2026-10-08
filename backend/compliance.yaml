@@ -1,0 +1,46 @@
+# 广告法合规词表（可选覆盖层）
+#
+# 内置词表在 backend/app/pipeline/compliance.py，覆盖三套规则：
+#   zh → 中国《广告法》   pt → 巴西 CONAR 自律守则 + CDC 第 37 条   es → 拉美消费者保护
+# 三套**各自独立生效、互不翻译**（例如巴西禁 "100% garantido"，中国禁 "国家级"）。
+#
+# 这个文件只做两件事：
+#   1) disabled —— 停用误报的内置规则（填规则 id，列表见 GET /api/compliance/rules）
+#   2) rules    —— 追加自定义规则；**同 id 视为覆盖**内置规则
+#
+# 改完调 `POST /api/compliance/reload` 生效，不用重启服务。
+#
+# 规则字段：
+#   id         唯一标识（自定义规则建议加自家前缀，如 brand-001）
+#   lang       zh | pt | es
+#   category   absolute | medical | urgency | guarantee | compare | fake_science | hedge | exaggeration
+#   severity   high（阻断发布）| medium（需举证）| low（仅提示）
+#   patterns   禁语正则列表（Python re 语法，unicode 感知，中文直接写词即可）
+#   exceptions 可选：上下文豁免正则；匹配位置前后 12 字内命中即忽略该次命中
+#   note / suggestion / law   报告中展示的说明、改写建议、依据条款
+#
+# 注意：中文只列**具体组合**（如"最好/第一品牌"）而不列裸"最""第一" ——
+# 裸词在中文里误报率极高（最后/最初/第一缕）。自定义规则请沿用这个习惯。
+
+disabled: []          # 例：["zh-hedge"]
+
+rules: []
+# ---- 示例：自家品牌额外禁语（取消注释即可生效）----
+# rules:
+#   - id: brand-001
+#     lang: zh
+#     category: exaggeration
+#     severity: high
+#     patterns: ["宇宙第一", "地表最强"]
+#     note: 品牌方额外要求，任何渠道不得出现
+#     suggestion: 换成可举证的表述
+#     law: 内部合规手册 §4.2
+#
+#   - id: brand-002
+#     lang: pt
+#     category: absolute
+#     severity: medium
+#     patterns: ["milagros[oa]"]
+#     note: "milagroso（奇迹般的）在巴西属需举证宣称"
+#     suggestion: 改用 marcante / inesquecível
+#     exceptions: ["milagre de natal"]

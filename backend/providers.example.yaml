@@ -1,0 +1,140 @@
+# ============================================================
+# 供应商配置示例（复制为 providers.yaml 后按需修改）
+#
+# 密钥一律不写进本文件：
+#   - 优先走环境变量（api_key_env / token_env 指定变量名）
+#   - 或在前端「设置」页写入凭据库（Windows Credential Manager / keyring）
+# 切换只改 active；换完要重启后端（配置是启动时读一次的）。
+# ============================================================
+
+providers:
+
+  # ============ 文本大模型（提示词引擎 / 反推 / 文案）============
+  llm:
+    active: default-openai
+    list:
+      # ① OpenAI 官方直连（出厂默认）
+      - id: default-openai
+        type: openai_compatible
+        base_url: https://api.openai.com/v1
+        api_key_env: OPENAI_API_KEY
+        model: gpt-4o
+        knowledge_base: kb/          # 知识库目录（铁律/模板/评分卡/文案规范）
+
+      # ② 任意中转站：单 key + 渠道头（把 base_url 换成你的中转站地址即可）
+      - id: relay-a
+        type: openai_compatible
+        base_url: https://some-relay.example.com/v1
+        api_key_env: RELAY_A_KEY
+        model: gpt-4o
+        extra_headers:
+          X-Channel: brand-video
+        timeout: 120
+        retries: 3
+
+      # ③ 任意中转站：多 key 轮换 + 故障转移 + 降级到本地
+      - id: relay-b
+        type: openai_compatible
+        base_url: https://another-relay.example.com/v1
+        key_rotation:
+          - RELAY_B_KEY_1
+          - RELAY_B_KEY_2
+        model: gpt-4o-mini
+        timeout: 90
+        retries: 5
+        fallback_provider: local-ollama
+
+      # ④ 本地兜底：ollama（OpenAI 兼容接口）
+      - id: local-ollama
+        type: openai_compatible
+        base_url: http://localhost:11434/v1
+        model: qwen2.5:14b
+
+  # ============ 文生图 ============
+  image:
+    # 生效的出图通道。改这一行即切换，**换完要重启后端**。
+    active: comfyui-sdxl
+    list:
+      # ---- 自建 ComfyUI（免费）----
+      # 前提① base_url 指向的实例真的在跑；前提② workflow 指向的 JSON 真实存在。
+      - id: comfyui-sdxl
+        type: comfyui
+        base_url: http://127.0.0.1:8188
+        # 注入点用 dotted path 描述"提示词挂在哪号节点"，
+        # 换工作流只改这里，代码零改动
+        inject:
+          positive: "6.inputs.text"
+          negative: "7.inputs.text"
+          width: "5.inputs.width"
+          height: "5.inputs.height"
+          seed: "3.inputs.seed"
+          ref_image: "12.inputs.image"   # 图生图 / 换装变体才需要
+        workflow: workflows/t2i_sdxl.json
+        default_resolution: 768x1344
+
+      # ---- 任意 OpenAI 兼容中转站出图：取消注释、换 base_url 就能接 ----
+      # - id: relay-image
+      #   type: openai_image              # 别名 openai_compatible 也可
+      #   base_url: https://your-relay.example.com/v1
+      #   token_env: RELAY_IMAGE_KEY
+      #   model: dall-e-3                 # 按中转站命名填（flux / seedream / ...）
+      #   default_size: 1024x1536         # 主播图是竖构图，方图会把人物裁成大头照
+      #   # 以下都可不填，默认按 OpenAI 约定；不匹配时再覆盖：
+      #   # image_path: /images/generations
+      #   # ref_image_field: image        # 图生图 / 换装的参考图字段名
+      #   # ref_image_mode: url           # url（直传）| base64（取字节转 data URI）
+      #   # response_format: url          # url | b64_json
+      #   # key_rotation: [RELAY_IMAGE_KEY_1, RELAY_IMAGE_KEY_2]   # 多 key 轮换
+      #   # extract: {task_id: data.task_id, result_url: data.0.url}
+      #   # body_extra: {style: vivid}    # 任意自定义请求字段
+
+  # ============ 图生视频 ============
+  video:
+    active: autodl-minimax-h3
+    list:
+      # AutoDL ComfyUI 云平台（base_url 留空即使用适配器内置的官方默认地址）
+      - id: autodl-minimax-h3
+        type: comfyui_autodl
+        token_env: AUTODL_TOKEN
+        workflow: minimax_h3_lightx2v_v5_15s
+        default_duration: 5
+        default_resolution: 480p_vertical   # 适配器自动映射成平台档位 "480p竖"
+        max_concurrency: 3                  # 并发上限：别把六镜一次性砸给 GPU 平台
+        poll_interval: 5
+        timeout: 900
+        # **不要在这里写 base_url**（写错路径段会得 404 且计费为 0）。
+        # 真要指向私有实例/自建转发，才填 `api_base`（整段地址，不是前缀）：
+        #   api_base: https://my-relay.example.net/v1/comfyui/comfyui_workflow
+
+      # ---- 任意 OpenAI 兼容中转站出片 ----
+      # 视频领域**没有** OpenAI 官方标准：路径 / 请求字段名 / 响应结构 / 状态词表
+      # 各家不同，所以这四处**全部可配**；下列默认值按最通行的约定给，
+      # 不匹配时按中转站文档覆盖即可，代码零改动。
+      # - id: relay-video
+      #   type: openai_video             # 别名 openai_compatible 也可
+      #   base_url: https://your-relay.example.com/v1
+      #   token_env: RELAY_VIDEO_KEY
+      #   model: kling-v1                # 按中转站命名填（sora-2 / veo-3 / ...）
+      #   submit_path: /videos/generations
+      #   poll_path: /videos/generations/{id}      # {id} = 提交返回的 task id
+      #   field_map: {ref_image: image, resolution: size, duration: duration}
+      #   extract: {task_id: data.task_id, status: data.status, result_url: data.video_url}
+      #   status_map: {succeeded: [SUCCESS], failed: [FAILED], running: [PROCESSING]}
+      #   ref_image_mode: url            # url（直传）| base64（取字节转 data URI）
+      #   key_rotation: [RELAY_VIDEO_KEY_1, RELAY_VIDEO_KEY_2]   # 多 key 轮换
+      #   # body_extra: {mode: pro}      # 任意自定义请求字段
+
+  # ============ 花费上限 ============
+  # 出片是"提交即计费"的非幂等操作：一旦哪一步忘了卡上限，钱就出去了。
+  # 四层上限集中判据（app/services/budget.py::check），所有提交入口都只调它。
+  # 0 = 不限；缺省整段即"不限"。也可在前端「设置 → 花费上限」表单里改。
+  budget:
+    enabled: true
+    period: total          # total（有史以来）| daily | monthly | rolling_24h
+    per_task_cap_cny: 0.0  # 单次提交预估费用上限 —— 最直接的"手滑保护"
+    project_cap_cny: 0.0   # 单项目累计上限
+    global_cap_cny: 0.0    # 全局（按 period 统计）累计上限
+    reserve_ratio: 1.0     # 预估费用按倍数预留（1.2 = 留 20% 余量）
+    count_pending: true    # 在途 + unknown 台账也计入已花（宁可低估余额，不可高估）
+    on_exceed: block       # block（拒绝提交）| warn（放行但告警）
+  # 每个供应商还能单独给 `spend_cap_cny`（见各 list 条目），用于"这家烧穿了就换别家"

@@ -1,0 +1,101 @@
+providers:
+  # =====================================================================
+  # ⚠️ 便携版首次运行配置模板
+  #
+  # 这份文件里**没有任何密钥**，所有 slot 的 active 都指向「待你填写」的空位。
+  # 请在软件「设置」页填入自己的 key/token；也可以直接改这个文件
+  # （改完重启软件生效，配置是 lru_cache 读一次的）。
+  #
+  # 为什么不给默认服务商：分发包会连着服务商的 base_url 一起发给用户，
+  # 但**密钥永远不跟着包走**（存在原开发者的操作系统凭据库里）。
+  # 于是用户机器上会拿着别人的地址去打请求 → 服务商返回
+  # `403 insufficient_user_quota 剩余额度 $0`，
+  # 而原文完全不提"你还没配密钥"，用户只会去充值 —— 钱花了仍然不通。
+  #
+  # 三个 slot 各自独立：
+  #   llm    文本（提示词生成 / 反推 / 文案）—— 必填，不填没法生成分镜
+  #   image  出图（主播正面图/三视图/产品图）
+  #   video  出片（AutoDL ComfyUI 等）
+  # =====================================================================
+
+  # ============ 文本大模型（必填）============
+  llm:
+    # 换成你自己的。两条路：
+    #   A. OpenAI 官方      → base_url: https://api.openai.com/v1
+    #   B. 任意中转站        → base_url 换成中转站地址（OpenAI 兼容协议）
+    active: my-llm
+    list:
+      - id: my-llm
+        type: openai_compatible
+        base_url: https://api.openai.com/v1   # ← 改这里
+        api_key_env: OPENAI_API_KEY           # ← 或在「设置」里填 key（推荐，会进系统凭据库）
+        model: gpt-4o                         # ← 按你的账号实际可用的模型填
+        knowledge_base: kb/
+        timeout: 120
+        retries: 3
+
+  # ============ 出图 ============
+  image:
+    # ⚠️ 保持 active: none 即可 —— 软件会提示"出图未配置"，不会去误打任何服务商。
+    # 配好一张图后在「设置」里选它即可（换完需重启软件）。
+    active: none
+    list:
+      # ---- 任意 OpenAI 兼容中转站出图 ----
+      # 多数中转站（one-api / new-api 一脉）都实现了 `POST {base}/images/generations`，
+      # 所以只填 base_url + key 就能用；model 按对方命名填（gpt-image / dall-e-3 / flux / seedream …）。
+      - id: my-image
+        type: openai_image          # 别名 openai_compatible 也可
+        base_url: https://api.openai.com/v1   # ← 改这里
+        api_key_env: IMAGE_KEY               # ← 或在「设置」里填
+        model: gpt-image-1                     # ← 按你的账号实际可用的填
+        # 主播图是**竖构图**（全身/七分身），默认方图会把人物裁成大头照。
+        # 注意本适配器只认 size / width+height，**不读** resolution 字段。
+        default_size: 1024x1536
+        # 下面这些默认按 OpenAI 约定，不匹配时再覆盖
+        image_path: /images/generations
+        ref_image_field: image      # 图生图 / 换装变体的参考图字段名
+        ref_image_mode: url         # url（直传）| base64
+        response_format: url        # url | b64_json
+        # key_rotation: [IMAGE_KEY_1, IMAGE_KEY_2]   # 多 key 轮换
+        # extract: {task_id: data.task_id, result_url: data.0.url}
+        # body_extra: {style: vivid}  # 任意自定义请求字段
+
+      # ---- 自建 ComfyUI（免费，但要先补齐两个前提）----
+      # 前提① base_url 指向的实例真的在跑；② workflow 指向的 JSON 真实存在。
+      # 缺任何一个都会在 submit 阶段失败。
+      # - id: comfyui-sdxl
+      #   type: comfyui
+      #   base_url: http://127.0.0.1:8188
+      #   workflow: workflows/t2i_sdxl.json
+      #   default_resolution: 768x1344
+
+  # ============ 图生视频 ============
+  video:
+    active: autodl
+    list:
+      # AutoDL ComfyUI：token 走 **环境变量 AUTODL_TOKEN**，
+      # 或写到 ~/.autodl/token / ~/.autodl/config.json（三级解析，env 最优先）。
+      - id: autodl
+        type: comfyui_autodl
+        base_url: https://your-autodl-endpoint      # ← 改这里
+        token_env: AUTODL_TOKEN
+        workflow: minimax_h3_lightx2v_v5_15s
+        default_duration: 5
+        default_resolution: 480p_vertical
+        max_concurrency: 2
+        poll_interval: 5
+        timeout: 900
+        cost_per_sec: 0.03
+
+      # 任意 OpenAI 兼容中转站出片（Kling 等）：各家人参不同，故全部做成可配
+      # - id: kling
+      #   type: openai_video
+      #   base_url: https://api.example.com/v1
+      #   api_key_env: VIDEO_KEY
+      #   model: kling-v1
+      #   submit_path: /v1/videos/generations
+      #   poll_path:   /v1/videos/generations/{id}
+      #   field_map:    {prompt: prompt, ref_image: image, duration: duration}
+      #   extract:      {task_id: data.task_id, result_url: data.result_url}
+      #   status_map:   {queued: [queued], running: [running], succeeded: [succeeded]}
+      #   cost_per_sec: 0.05

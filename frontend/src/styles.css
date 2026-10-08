@@ -1,0 +1,271 @@
+/* ClipForge 风格的暗色皮肤（AntD 实现版）。
+ *
+ * 为什么是"AntD + 一层自定义 CSS"而不是引入 Tailwind：
+ * 现有工程 10 个页面都建在 AntD 上，引第二套样式体系会让主题分裂
+ * （两套 reset、两套间距刻度、两套断点）。这里只把 AntD 覆盖不到的
+ * "容器质感"补上：玻璃拟态卡片、网格底纹、品牌渐变、拖拽区。
+ *
+ * 硬约束：所有颜色都必须**在暗底上可读**。文本色用 var(--cf-text) 系列，
+ * 不要在组件里硬编码 #333 之类的深色 —— 那是亮色主题的遗留。
+ */
+
+:root {
+  --cf-bg: #0b0b10;
+  --cf-bg-soft: #101018;
+  --cf-panel: rgba(255, 255, 255, 0.035);
+  --cf-panel-hover: rgba(255, 255, 255, 0.06);
+  --cf-border: rgba(255, 255, 255, 0.09);
+  --cf-border-strong: rgba(255, 255, 255, 0.16);
+  --cf-text: #e8e8ee;
+  --cf-text-dim: #9a9aa8;
+  --cf-text-faint: #6e6e7c;
+  --cf-brand: #c08b52;
+  --cf-brand-2: #e0ab6d;
+  --cf-danger: #ff6b6b;
+  --cf-radius: 12px;
+}
+
+html, body, #root {
+  height: 100%;
+  background: var(--cf-bg);
+}
+
+body {
+  color: var(--cf-text);
+  margin: 0;
+}
+
+/* 网格底纹：一层极淡的线，给大面积深色一个尺度参照 */
+.cf-grid-bg {
+  background-color: var(--cf-bg);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+  background-position: -1px -1px;
+}
+
+/* ---------------- 玻璃拟态卡片 ---------------- */
+
+.cf-card {
+  background: var(--cf-panel);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--cf-radius);
+  backdrop-filter: blur(8px);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.cf-card-accent {
+  border-color: rgba(192, 139, 82, 0.45);
+  box-shadow: 0 0 0 1px rgba(192, 139, 82, 0.10) inset;
+}
+
+.cf-card-hover:hover {
+  background: var(--cf-panel-hover);
+  border-color: var(--cf-border-strong);
+  transform: translateY(-2px);
+}
+
+/* 商品卡：缩略图区域 */
+.cf-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+  border-top-left-radius: var(--cf-radius);
+  border-top-right-radius: var(--cf-radius);
+}
+
+.cf-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cf-thumb-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cf-text-faint);
+  font-size: 26px;
+}
+
+/* 缩略图上的悬浮操作键：移动端常显、桌面端 hover 才显 */
+.cf-thumb-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+@media (min-width: 768px) {
+  .cf-thumb-actions { opacity: 0; }
+  .cf-card-hover:hover .cf-thumb-actions { opacity: 1; }
+}
+
+.cf-icon-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s ease;
+}
+
+.cf-icon-btn:hover { background: var(--cf-brand); }
+.cf-icon-btn.danger:hover { background: var(--cf-danger); }
+
+/* ---------------- 拖拽上传区 ---------------- */
+
+.cf-drop {
+  border: 2px dashed var(--cf-border-strong);
+  border-radius: var(--cf-radius);
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cf-drop:hover { border-color: rgba(192, 139, 82, 0.55); }
+
+.cf-drop.is-over {
+  border-color: var(--cf-brand);
+  background: rgba(192, 139, 82, 0.08);
+}
+
+.cf-drop-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  border-radius: var(--cf-radius);
+  background: var(--cf-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--cf-text-dim);
+}
+
+/* 已上传图片的预览格 */
+.cf-img-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .cf-img-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+.cf-img-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--cf-border);
+  background: var(--cf-panel);
+}
+
+.cf-img-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cf-img-cell .cf-img-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.cf-img-cell .cf-img-del:hover { background: var(--cf-danger); }
+
+/* ---------------- 品牌渐变（CTA 按钮 / 标题强调） ---------------- */
+
+.cf-brand-gradient {
+  background: linear-gradient(100deg, var(--cf-brand) 0%, var(--cf-brand-2) 100%);
+  color: #1a1005;
+  border: 0;
+  font-weight: 600;
+}
+
+.cf-brand-gradient:hover { opacity: 0.92; color: #1a1005; }
+
+.cf-brand-text {
+  background: linear-gradient(100deg, var(--cf-brand) 0%, var(--cf-brand-2) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------------- 页头 / 空状态 ---------------- */
+
+.cf-page-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.cf-page-sub {
+  margin: 4px 0 0;
+  color: var(--cf-text-dim);
+  font-size: 13px;
+}
+
+.cf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 16px;
+  text-align: center;
+}
+
+.cf-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  border-radius: 50%;
+  background: var(--cf-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: var(--cf-text-faint);
+}
+
+.cf-hint {
+  color: var(--cf-text-dim);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* AntD 默认在白底上做的分割线/表头在暗底上偏亮，压一档 */
+.cf-grid-bg .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.035) !important;
+  color: var(--cf-text) !important;
+}
