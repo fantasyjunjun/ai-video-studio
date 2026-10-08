@@ -8,6 +8,8 @@
 
 FastAPI · SQLAlchemy · SQLite · React 18 · TypeScript · Ant Design · Vite
 
+<img src="screenshot.png" alt="主界面" width="880"/>
+
 </div>
 
 ---
